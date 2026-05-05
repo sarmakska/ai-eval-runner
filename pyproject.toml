@@ -2,7 +2,7 @@
 name = "ai-eval-runner"
 version = "1.0.0"
 description = "Evals as code. Datasets, scorers, traces, regressions, all in one CLI."
-authors = [{ name = "Sarma Linux", email = "helpme@sarmalinux.com" }]
+authors = [{ name = "Sarma Linux", email = "sarma@sarmalinux.com" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.12"
