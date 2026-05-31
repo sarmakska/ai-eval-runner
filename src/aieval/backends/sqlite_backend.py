@@ -15,6 +15,8 @@ class SqliteBackend:
                 model TEXT NOT NULL,
                 dataset_hash TEXT NOT NULL,
                 total INTEGER NOT NULL,
+                git_sha TEXT,
+                provider TEXT,
                 started_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
                 finished_at INTEGER
             )
@@ -36,14 +38,34 @@ class SqliteBackend:
         """)
         self.conn.commit()
 
-    def create_run(self, *, name: str, model: str, dataset_hash: str, total: int) -> str:
+    def create_run(
+        self,
+        *,
+        name: str,
+        model: str,
+        dataset_hash: str,
+        total: int,
+        git_sha: str = "unknown",
+        provider: str = "",
+    ) -> str:
         run_id = str(uuid.uuid4())
         self.conn.execute(
-            "INSERT INTO runs (id, name, model, dataset_hash, total) VALUES (?, ?, ?, ?, ?)",
-            (run_id, name, model, dataset_hash, total),
+            "INSERT INTO runs (id, name, model, dataset_hash, total, git_sha, provider) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (run_id, name, model, dataset_hash, total, git_sha, provider),
         )
         self.conn.commit()
         return run_id
+
+    def find_baseline(self, name: str, exclude_run_id: str | None = None) -> dict | None:
+        """Return the most recent earlier run with the same name, if any."""
+        cur = self.conn.execute(
+            "SELECT * FROM runs WHERE name = ? AND id != ? ORDER BY started_at DESC LIMIT 1",
+            (name, exclude_run_id or ""),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return dict(zip([d[0] for d in cur.description], row, strict=True))
 
     def persist_results(self, run_id: str, results: list[dict]):
         for r in results:
@@ -72,7 +94,8 @@ class SqliteBackend:
 
     def list_runs(self, limit: int = 50):
         cur = self.conn.execute(
-            "SELECT id, name, model, total, started_at, finished_at FROM runs ORDER BY started_at DESC LIMIT ?",
+            "SELECT id, name, model, total, git_sha, provider, started_at, finished_at "
+            "FROM runs ORDER BY started_at DESC LIMIT ?",
             (limit,),
         )
         return [dict(zip([d[0] for d in cur.description], row, strict=True)) for row in cur.fetchall()]
