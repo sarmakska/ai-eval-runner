@@ -1,12 +1,12 @@
 # ai-eval-runner
 
-**Evals as code. Datasets, scorers, traces and CI regression gates in one Python CLI.**
+**Evals as code. Datasets, scorers, judges, regression gates and bootstrapped A/B in one Python CLI.**
 
 [![License: MIT](https://img.shields.io/github/license/sarmakska/ai-eval-runner)](LICENSE)
 [![Language](https://img.shields.io/github/languages/top/sarmakska/ai-eval-runner)](https://github.com/sarmakska/ai-eval-runner)
 [![Last commit](https://img.shields.io/github/last-commit/sarmakska/ai-eval-runner)](https://github.com/sarmakska/ai-eval-runner/commits/main)
 
-ai-eval-runner is a self-hosted toolkit for evaluating LLM outputs the same way you test backend code. You write datasets as JSONL and scorers as plain Python functions, run them with one command, and store every result keyed by git SHA and dataset hash. A built-in viewer shows per-example traces and a CI mode gates pull requests on regression deltas.
+ai-eval-runner is a self-hosted toolkit for evaluating LLM outputs the same way you test backend code. You write datasets as JSONL and scorers as plain Python functions, run them with one command, and store every result keyed by git SHA and dataset version. A built-in viewer shows per-example traces and a regression diff, a CI mode gates pull requests on score deltas, and a paired bootstrap tells you when one run genuinely beats another.
 
 Built by [Sarma Linux](https://sarmalinux.com).
 
@@ -26,21 +26,23 @@ Then start the viewer with `uv run aieval view` and open `http://localhost:8000`
 
 ## What is in the box
 
-- **CLI** (`aieval`) with `run`, `list`, `view`, `diff` and `ci` commands.
-- **Scorers** as plain Python functions, plus built-ins: `exact_match`, `json_valid` and `rouge_l`.
-- **Datasets** loaded from JSONL files or built in-process from a list of dicts.
-- **Providers** for SarmaLink and OpenAI-compatible endpoints.
+- **CLI** (`aieval`) with `run`, `list`, `view`, `diff`, `ci` and `pairwise` commands.
+- **Scorers** as plain Python functions, plus built-ins: `exact_match`, `json_valid`, `rouge_l` and an `llm_judge` graded against a rubric.
+- **Datasets** loaded from JSONL or built in-process, each given an order-independent content version, with a registry that records versions over time.
+- **Regression diff** as a CLI command and a viewer route, showing per-scorer mean deltas and the examples that moved most.
+- **CI gate** that compares a candidate run to a baseline and exits non-zero when any scorer regresses past a threshold.
+- **Pairwise A/B** with a paired bootstrap, reporting a per-scorer confidence interval and declaring a winner only when the interval clears zero.
+- **OpenTelemetry** attribute capture for runs and examples, behind an optional extra, following the GenAI semantic conventions.
 - **Backends** for local SQLite and DuckDB, so runs persist with zero infrastructure.
-- **Viewer** built on FastAPI and HTMX for browsing runs and per-example results.
-- **Runs** versioned by git SHA plus dataset hash, so two runs are only compared when they are genuinely comparable.
+- **Viewer** built on FastAPI and HTMX for browsing runs, traces and diffs.
 
 ## Writing an eval
 
-An eval is a plain Python file. Decorate scorer functions with `@scorer`, point at a dataset, and call `run`.
+An eval is a plain Python file. Decorate scorer functions with `@scorer`, point at a dataset, and call `run`. Built-in scorers and the LLM judge drop straight in.
 
 ```python
 from aieval import dataset, run, scorer
-from aieval.scorers import rouge_l
+from aieval.scorers import llm_judge, rouge_l
 
 
 @scorer
@@ -48,38 +50,58 @@ def length_under_120_words(prediction: str, _expected: str) -> float:
     return 1.0 if len(prediction.split()) <= 120 else 0.0
 
 
+faithful = llm_judge(
+    rubric="Reward summaries faithful to the source that omit nothing important.",
+    model="smart",
+    name="faithfulness",
+)
+
+
 if __name__ == "__main__":
     run(
         name="summarisation",
         dataset=dataset.jsonl("examples/summarisation/dataset.jsonl"),
-        scorers=[rouge_l, length_under_120_words],
+        scorers=[rouge_l, length_under_120_words, faithful],
         provider="sarmalink",
         model="smart",
     )
 ```
 
-Run it with `uv run aieval run examples/summarisation/eval.py`. The runner handles parallel execution, retries, scoring and storage.
+Run it with `uv run aieval run examples/summarisation/eval.py`. The runner handles parallel execution, retries, scoring, telemetry and storage.
+
+## Comparing runs
+
+```bash
+uv run aieval list                       # find run ids
+uv run aieval diff <run_a> <run_b>       # per-scorer deltas and the examples that moved
+uv run aieval pairwise <run_a> <run_b>   # paired bootstrap with a 95% confidence interval
+uv run aieval ci <run_id> --threshold 0.05   # gate a candidate; exits 1 on regression
+```
 
 ## Architecture
 
 ```mermaid
 graph LR
   D[(Dataset<br/>JSONL or list)] --> R[Runner]
-  S[Scorers<br/>plain Python] --> R
+  S[Scorers<br/>plain Python + judge] --> R
   R -->|parallel provider calls| L[LLM provider<br/>SarmaLink / OpenAI]
+  R -->|spans| OT[OpenTelemetry]
   R --> B[(Backend<br/>SQLite / DuckDB)]
   B --> V[FastAPI + HTMX viewer]
-  B --> CI[CI regression gate]
+  B --> CMP[Compare: diff / CI gate / pairwise]
 
   classDef ext fill:#a78bfa,stroke:#a78bfa,color:#fff
-  class L ext
+  class L,OT ext
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full write-up.
 
 ## When to use this
 
 - You ship prompt or model changes and want a repeatable eval suite instead of eyeballing samples.
 - You want an eval gate in CI that fails a pull request when a scorer regresses past a threshold.
-- You want runs, scores and traces in one self-hosted tool with no third-party platform and no vendor lock-in.
+- You want to know whether a new model genuinely beats the old one, with a confidence interval rather than a single number.
+- You want runs, scores, judges and traces in one self-hosted tool with no third-party platform and no vendor lock-in.
 
 ## When not to use this
 
@@ -89,7 +111,7 @@ graph LR
 
 ## Documentation
 
-Full architecture, real-world examples and troubleshooting live in the [wiki](https://github.com/sarmakska/ai-eval-runner/wiki).
+Full architecture, real-world examples and troubleshooting live in the [wiki](https://github.com/sarmakska/ai-eval-runner/wiki). Change history is in [CHANGELOG.md](CHANGELOG.md) and the plan is in [ROADMAP.md](ROADMAP.md).
 
 ## License
 
