@@ -9,18 +9,28 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v3
         with:
           version: latest
+          enable-cache: true
 
-      - name: Set up Python
-        run: uv python install 3.12
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
-      - name: Compile syntax check
-        run: uv run --with-requirements <(echo "") python -m compileall -q . || python -m compileall -q .
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
 
-      - name: Lint (best-effort)
-        run: uv tool run ruff check . || true
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Build
+        run: uv build
+
+      - name: Test
+        run: uv run pytest -q
