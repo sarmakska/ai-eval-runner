@@ -8,6 +8,10 @@ __pycache__/
 dist/
 build/
 *.db
+aieval-datasets.json
 .pytest_cache/
 .ruff_cache/
+coverage/
+.coverage
+htmlcov/
 .DS_Store
