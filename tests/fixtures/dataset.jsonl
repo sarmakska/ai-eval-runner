@@ -1,0 +1,3 @@
+{"prompt": "the cat sat on the mat", "expected": "the cat sat on the mat"}
+{"prompt": "summarise the quarterly report", "expected": "a short summary"}
+{"prompt": "return valid json", "expected": "{}"}

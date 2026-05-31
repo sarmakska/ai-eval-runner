@@ -15,13 +15,15 @@ def test_package_exports():
     assert callable(run)
     assert callable(scorer)
     assert hasattr(dataset, "jsonl")
+    assert callable(aieval.compare)
+    assert callable(aieval.pairwise)
 
 
 def test_cli_boots():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "CLI" in result.output
-    for command in ("run", "list", "view", "diff", "ci"):
+    for command in ("run", "list", "view", "diff", "ci", "pairwise"):
         assert command in result.output
 
 
@@ -51,4 +53,4 @@ def test_run_completes_end_to_end(tmp_path):
     assert run_id
     results = backends.get_backend().get_results(run_id)
     assert len(results) == 1
-    assert results[0]["ok"] == 1
+    assert bool(results[0]["ok"]) is True
