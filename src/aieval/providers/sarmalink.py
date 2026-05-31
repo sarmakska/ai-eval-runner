@@ -1,4 +1,5 @@
 import os
+
 import httpx
 
 BASE_URL = os.getenv("SARMALINK_BASE_URL", "https://api.sarmalink.ai/v1")

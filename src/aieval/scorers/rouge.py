@@ -1,5 +1,5 @@
 """Lightweight ROUGE-L. For full ROUGE use the `rouge-score` package."""
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def _lcs(a: Sequence[str], b: Sequence[str]) -> int:

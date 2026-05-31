@@ -1,8 +1,9 @@
 """aieval CLI."""
-import typer
 import importlib.util
 import sys
 from pathlib import Path
+
+import typer
 from rich.console import Console
 from rich.table import Table
 
@@ -52,6 +53,7 @@ def list():
 def view(port: int = 8000):
     """Start the HTMX viewer."""
     import uvicorn
+
     from .viewer.app import app as viewer_app
     uvicorn.run(viewer_app, host="0.0.0.0", port=port)
 

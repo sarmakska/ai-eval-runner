@@ -1,5 +1,5 @@
-import sqlite3
 import json
+import sqlite3
 import uuid
 from pathlib import Path
 
@@ -75,15 +75,15 @@ class SqliteBackend:
             "SELECT id, name, model, total, started_at, finished_at FROM runs ORDER BY started_at DESC LIMIT ?",
             (limit,),
         )
-        return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+        return [dict(zip([d[0] for d in cur.description], row, strict=True)) for row in cur.fetchall()]
 
     def get_run(self, run_id: str):
         cur = self.conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,))
         row = cur.fetchone()
         if not row:
             return None
-        return dict(zip([d[0] for d in cur.description], row))
+        return dict(zip([d[0] for d in cur.description], row, strict=True))
 
     def get_results(self, run_id: str):
         cur = self.conn.execute("SELECT * FROM results WHERE run_id = ?", (run_id,))
-        return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+        return [dict(zip([d[0] for d in cur.description], row, strict=True)) for row in cur.fetchall()]

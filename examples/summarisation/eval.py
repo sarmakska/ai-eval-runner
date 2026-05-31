@@ -1,5 +1,5 @@
 """Example: summarisation eval."""
-from aieval import dataset, scorer, run
+from aieval import dataset, run, scorer
 from aieval.scorers import rouge_l
 
 

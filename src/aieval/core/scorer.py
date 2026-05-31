@@ -1,5 +1,5 @@
 """Scorer decorator + protocol."""
-from typing import Callable
+from collections.abc import Callable
 
 
 def scorer(fn: Callable[[str, str], float]) -> Callable[[str, str], float]:

@@ -5,7 +5,8 @@ import asyncio
 import hashlib
 import json
 import time
-from typing import Iterable, Callable, Any
+from collections.abc import Callable, Iterable
+
 from ..backends import get_backend
 from ..providers import get_provider
 

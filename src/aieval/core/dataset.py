@@ -1,7 +1,7 @@
 """Dataset loaders."""
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 
 def jsonl(path: str | Path) -> Iterator[dict]:

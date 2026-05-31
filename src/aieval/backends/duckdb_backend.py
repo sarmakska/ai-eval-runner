@@ -1,7 +1,8 @@
 """DuckDB backend. Same shape as SQLite, faster for large analytical queries."""
-import duckdb
 import json
 import uuid
+
+import duckdb
 
 
 class DuckdbBackend:
