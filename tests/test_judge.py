@@ -1,4 +1,6 @@
 """LLM-as-judge scorer."""
+import pytest
+
 import aieval.scorers.judge as judge_mod
 from aieval.core.scorer import invoke_scorer, scorer_name
 from aieval.scorers import llm_judge, parse_verdict
@@ -40,3 +42,28 @@ def test_llm_judge_uses_grading_model(monkeypatch):
     assert captured["model"] == "judge-pro"
     assert "what is the answer?" in captured["prompt"]
     assert "grade correctness" in captured["prompt"]
+
+
+def test_llm_judge_self_consistency_takes_median(monkeypatch):
+    # Three verdicts: 0.2, 0.4, 1.0 -> median 0.4. A single noisy 1.0 cannot
+    # drag the score up once the median of an odd sample is taken.
+    replies = iter(
+        ['{"score": 2}', '{"score": 4}', '{"score": 10}']
+    )
+    calls = {"n": 0}
+
+    async def fake_provider(prompt: str, model: str = "smart") -> str:
+        calls["n"] += 1
+        return next(replies)
+
+    monkeypatch.setattr(judge_mod, "get_provider", lambda name: fake_provider)
+
+    j = llm_judge(rubric="grade", samples=3, name="consistent")
+    score = invoke_scorer(j, "x", "y", {"prompt": "q"})
+    assert score == 0.4
+    assert calls["n"] == 3
+
+
+def test_llm_judge_rejects_non_positive_samples():
+    with pytest.raises(ValueError, match="positive integer"):
+        llm_judge(samples=0)
