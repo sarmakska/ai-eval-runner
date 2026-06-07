@@ -8,6 +8,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `token_f1` built-in scorer: order-independent token-level F1 overlap (the harmonic mean of token precision and recall), counting repeated tokens by multiplicity. Case-insensitive by default with a `case_sensitive` flag.
+- Self-consistency for `llm_judge` via a `samples` parameter: the judge is queried `samples` times concurrently and the median verdict is taken, damping the variance of a single LLM grade. Defaults to 1, so existing judges are unchanged; values below 1 raise a `ValueError`.
 - LLM-as-judge scorers via `llm_judge`, which grade a prediction against a rubric using a configurable grading model and normalise the verdict to the 0.0 to 1.0 range.
 - Regression diff: a real `aieval diff` command and a `/diff/{run_a}/{run_b}` viewer route that show per-scorer mean deltas and the examples that moved most.
 - Pairwise A/B comparison with a paired bootstrap (`aieval pairwise` and `aieval.pairwise`), reporting a per-scorer confidence interval and declaring a winner only when the interval clears zero.

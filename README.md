@@ -27,7 +27,7 @@ Then start the viewer with `uv run aieval view` and open `http://localhost:8000`
 ## What is in the box
 
 - **CLI** (`aieval`) with `run`, `list`, `view`, `diff`, `ci` and `pairwise` commands.
-- **Scorers** as plain Python functions, plus built-ins: `exact_match`, `json_valid`, `rouge_l` and an `llm_judge` graded against a rubric.
+- **Scorers** as plain Python functions, plus built-ins: `exact_match`, `json_valid`, `rouge_l`, `token_f1` (order-independent span overlap) and an `llm_judge` graded against a rubric, with optional self-consistency sampling.
 - **Datasets** loaded from JSONL or built in-process, each given an order-independent content version, with a registry that records versions over time.
 - **Regression diff** as a CLI command and a viewer route, showing per-scorer mean deltas and the examples that moved most.
 - **CI gate** that compares a candidate run to a baseline and exits non-zero when any scorer regresses past a threshold.
@@ -68,6 +68,28 @@ if __name__ == "__main__":
 ```
 
 Run it with `uv run aieval run examples/summarisation/eval.py`. The runner handles parallel execution, retries, scoring, telemetry and storage.
+
+### Built-in scorers
+
+`token_f1` gives an order-independent span-overlap score, the harmonic mean of token precision and recall. It is more forgiving than `exact_match` for free-form answers and, unlike `rouge_l`, ignores word order, so a correct answer that reorders the reference is not penalised.
+
+```python
+from aieval.scorers import token_f1
+
+token_f1("paris is the capital", "the capital is paris")  # 1.0, order ignored
+```
+
+A single LLM grade carries real variance. Pass `samples` to `llm_judge` to grade with self-consistency: the judge is queried that many times concurrently and the median verdict is taken, so one noisy grade cannot swing the score.
+
+```python
+from aieval.scorers import llm_judge
+
+faithful = llm_judge(
+    rubric="Reward summaries faithful to the source that omit nothing important.",
+    samples=3,            # query three times, take the median verdict
+    name="faithfulness",
+)
+```
 
 ## Comparing runs
 
